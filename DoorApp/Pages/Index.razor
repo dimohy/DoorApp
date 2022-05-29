@@ -1,0 +1,81 @@
+﻿@page "/"
+
+@using DoorApp.Data
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+
+@inject ProtectedLocalStorage protectedLocalStorage
+@inject MqttDoorService doorService
+
+<PageTitle>Control</PageTitle>
+
+@if (isMustRegist is false)
+{
+    <h2>디바이스 ID : @deviceId</h2>
+    <h3>디바이스 종류 : @deviceType</h3>
+}
+else
+{
+    <div class="container col-4">
+        <form class="form-control">
+            <h2>디바이스 로그인</h2>
+            <p/>
+
+            <div class="col">
+                <input class="form-control" placeholder="Device Id" @bind-value="deviceId" />
+            </div>
+
+            <p/>
+            @if (message is not null)
+            {
+                <div class="alert alert-warning" role="alert">
+                    @message
+                </div>
+            }
+            
+
+            <div class="col-12">
+                <button class="btn btn-primary btn-block" @onclick="RegistAsync" type="button">Regist</button>
+            </div>
+        </form>    
+    </div>
+}
+
+@code
+{
+    private bool isMustRegist = true;
+    private string deviceId = default!;
+    private string deviceType = "door";
+    private string? message;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender is false)
+            return;
+
+        var result = await protectedLocalStorage.GetAsync<string>("deviceId");
+        if (result.Success is false)
+        {
+            isMustRegist = true;
+            return;
+        }
+
+        isMustRegist = false;
+
+        deviceId = result.Value!;
+
+        StateHasChanged();
+    }
+
+    private async Task RegistAsync()
+    {
+        message = "디바이스가 등록되지 않았습니다.";
+
+        var result = doorService.IsRegistDeviceId(deviceId);
+        if (result is false)
+            return;
+
+        message = null;
+
+        await protectedLocalStorage.SetAsync("deviceId", deviceId);
+    }
+}
